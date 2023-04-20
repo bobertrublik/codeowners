@@ -1,0 +1,5 @@
+- id: codeowners-validator
+  name: Validate CODEOWNERS file
+  description: Ensures the correctness of your CODEOWNERS file.
+  language: golang
+  entry: codeowners-validator
