@@ -7,6 +7,7 @@ import (
 	"net/mail"
 	"strings"
 
+	"go.szostok.io/codeowners-validator/internal/config"
 	"go.szostok.io/codeowners-validator/internal/ctxutil"
 
 	"github.com/google/go-github/v41/github"
@@ -54,7 +55,7 @@ type ValidOwner struct {
 }
 
 // NewValidOwner returns new instance of the ValidOwner
-func NewValidOwner(cfg ValidOwnerConfig, ghClient *github.Client, checkScopes bool) (*ValidOwner, error) {
+func NewValidOwner(cfg *config.Config, ghClient *github.Client, checkScopes bool) (*ValidOwner, error) {
 	split := strings.Split(cfg.Repository, "/")
 	if len(split) != 2 {
 		return nil, errors.Errorf("Wrong repository name. Expected pattern 'owner/repository', got '%s'", cfg.Repository)
@@ -322,7 +323,9 @@ func (v *ValidOwner) validateGitHubUser(ctx context.Context, name string) *valid
 }
 
 // There is a method to check if user is a org member
-//  client.Organizations.IsMember(context.Background(), "org-name", "user-name")
+//
+//	client.Organizations.IsMember(context.Background(), "org-name", "user-name")
+//
 // But latency is too huge for checking each single user independent
 // better and faster is to ask for all members and cache them.
 func (v *ValidOwner) initOrgListMembers(ctx context.Context) error {

@@ -13,7 +13,7 @@ func main() {
 	ctx, cancelFunc := WithStopContext(context.Background())
 	defer cancelFunc()
 
-	if err := cmd.NewRoot().ExecuteContext(ctx); err != nil {
+	if err := cmd.RootCmd().ExecuteContext(ctx); err != nil {
 		// error is already handled by `cobra`, we don't want to log it here as we will duplicate the message.
 		// If needed, based on error type we can exit with different codes.
 		//nolint:gocritic
