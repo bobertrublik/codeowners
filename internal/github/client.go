@@ -15,7 +15,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-var HTTPRequestTimeout time.Duration = 30
+var httpRequestTimeout int = 30
 
 // Validate validates if provided client options are valid.
 func Validate(cfg *config.Config) error {
@@ -44,7 +44,12 @@ func NewClient(ctx context.Context, cfg *config.Config) (ghClient *github.Client
 		return nil, false, err
 	}
 
-	httpClient := http.DefaultClient
+	httpClient := &http.Client{
+		Transport:     http.DefaultClient.Transport,
+		CheckRedirect: http.DefaultClient.CheckRedirect,
+		Jar:           http.DefaultClient.Jar,
+		Timeout:       time.Duration(httpRequestTimeout) * time.Second,
+	}
 
 	if cfg.GithubAccessToken != "" {
 		httpClient = oauth2.NewClient(ctx, oauth2.StaticTokenSource(
@@ -57,7 +62,6 @@ func NewClient(ctx context.Context, cfg *config.Config) (ghClient *github.Client
 			return
 		}
 	}
-	httpClient.Timeout = HTTPRequestTimeout
 
 	baseURL, uploadURL := cfg.GithubBaseURL, cfg.GithubUploadURL
 

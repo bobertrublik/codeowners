@@ -112,3 +112,19 @@ func (s *SeverityType) Unmarshal(in string) error {
 
 	return nil
 }
+
+func (s *SeverityType) Set(in string) error {
+	switch strings.ToLower(in) {
+	case "error", "err":
+		*s = Error
+	case "warning", "warn":
+		*s = Warning
+	default:
+		return fmt.Errorf("not a valid severity type: %q", in)
+	}
+	return nil
+}
+
+func (s *SeverityType) Type() string {
+	return "SeverityType"
+}

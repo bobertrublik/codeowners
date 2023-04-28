@@ -3,17 +3,22 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.szostok.io/codeowners-validator/internal/api"
 	"go.szostok.io/codeowners-validator/internal/config"
 	"go.szostok.io/codeowners-validator/internal/load"
+	"go.szostok.io/codeowners-validator/internal/runner"
 	"go.szostok.io/codeowners-validator/pkg/codeowners"
 	"go.szostok.io/version/extension"
 )
+
+var severity api.SeverityType
 
 // NewRoot returns a root cobra.Command for the whole Agent utility.
 func RootCmd() *cobra.Command {
@@ -49,31 +54,30 @@ func validateCmd(cfg *config.Config) *cobra.Command {
 		Short: "Validate a CODEOWNERS file",
 
 		Run: func(cmd *cobra.Command, args []string) {
-			// log := logrus.New()
+			log := logrus.New()
 
 			// init checks
-			_, err := load.Checks(cmd.Context(), cfg)
+			checks, err := load.Checks(cmd.Context(), cfg)
 			exitOnError(err)
-			fmt.Println(cfg.Checks)
 
 			// init codeowners entries
-			_, err = codeowners.NewFromPath(cfg.RepositoryPath)
+			codeownersEntries, err := codeowners.NewFromPath(cfg.RepositoryPath)
 			exitOnError(err)
 
-			// // run check runner
-			// absRepoPath, err := filepath.Abs(cfg.RepositoryPath)
-			// exitOnError(err)
+			// run check runner
+			absRepoPath, err := filepath.Abs(cfg.RepositoryPath)
+			exitOnError(err)
 
-			// checkRunner := runner.NewCheckRunner(log, codeownersEntries, absRepoPath, cfg.CheckFailureLevel, checks...)
-			// checkRunner.Run(cmd.Context())
+			checkRunner := runner.NewCheckRunner(log, codeownersEntries, absRepoPath, cfg.CheckFailureLevel, checks...)
+			checkRunner.Run(cmd.Context())
 
-			// if cmd.Context().Err() != nil {
-			// 	log.Error("Application was interrupted by operating system")
-			// 	os.Exit(2)
-			// }
-			// if checkRunner.ShouldExitWithCheckFailure() {
-			// 	os.Exit(3)
-			// }
+			if cmd.Context().Err() != nil {
+				log.Error("Application was interrupted by operating system")
+				os.Exit(2)
+			}
+			if checkRunner.ShouldExitWithCheckFailure() {
+				os.Exit(3)
+			}
 		},
 	}
 	addValidateFlags(validateCmd)
@@ -82,7 +86,7 @@ func validateCmd(cfg *config.Config) *cobra.Command {
 
 func addValidateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSlice("checks", nil, "List of checks to be executed")
-	cmd.Flags().String("check-failure-level", "warning", "Defines the level on which the application should treat check issues as failures")
+	cmd.Flags().Var(&severity, "check-failure-level", "Defines the level on which the application should treat check issues as failures")
 	cmd.Flags().String("experimental-checks", "", "The comma-separated list of experimental checks that should be executed")
 	cmd.Flags().String("github-access-token", "", "GitHub access token")
 	cmd.Flags().String("github-base-url", "https://api.github.com/", "GitHub base URL for API requests")
@@ -98,7 +102,6 @@ func addValidateFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSlice("owner-checker-ignored-owners", []string{"@ghost"}, "The comma-separated list of owners that should not be validated")
 	cmd.Flags().Bool("owner-checker-allow-unowned-patterns", true, "Specifies whether CODEOWNERS may have unowned files")
 	cmd.Flags().Bool("owner-checker-owners-must-be-teams", false, "Specifies whether only teams are allowed as owners of files")
-
 }
 
 func exitOnError(err error) {
