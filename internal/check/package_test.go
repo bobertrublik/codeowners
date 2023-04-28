@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"go.szostok.io/codeowners-validator/internal/api"
 	"go.szostok.io/codeowners-validator/internal/check"
 
 	"github.com/stretchr/testify/assert"
@@ -12,12 +13,12 @@ import (
 )
 
 func TestRespectingCanceledContext(t *testing.T) {
-	must := func(checker check.Checker, err error) check.Checker {
+	must := func(checker api.Checker, err error) api.Checker {
 		require.NoError(t, err)
 		return checker
 	}
 
-	checkers := []check.Checker{
+	checkers := []api.Checker{
 		check.NewDuplicatedPattern(),
 		check.NewFileExist(),
 		check.NewValidSyntax(),

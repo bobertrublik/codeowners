@@ -3,6 +3,7 @@ package load
 import (
 	"context"
 
+	"go.szostok.io/codeowners-validator/internal/api"
 	"go.szostok.io/codeowners-validator/internal/check"
 	"go.szostok.io/codeowners-validator/internal/config"
 	"go.szostok.io/codeowners-validator/internal/github"
@@ -15,8 +16,8 @@ import (
 // and do not create clients which will not be used because of the given checker.
 //
 // MAYBE in the future the https://github.com/uber-go/dig will be used.
-func Checks(ctx context.Context, cfg *config.Config) ([]check.Checker, error) {
-	var checks []check.Checker
+func Checks(ctx context.Context, cfg *config.Config) ([]api.Checker, error) {
+	var checks []api.Checker
 
 	if isEnabled(cfg.Checks, "syntax") {
 		checks = append(checks, check.NewValidSyntax())
@@ -56,8 +57,8 @@ func Checks(ctx context.Context, cfg *config.Config) ([]check.Checker, error) {
 	return append(checks, expChecks...), nil
 }
 
-func loadExperimentalChecks(experimentalChecks []string) ([]check.Checker, error) {
-	var checks []check.Checker
+func loadExperimentalChecks(experimentalChecks []string) ([]api.Checker, error) {
+	var checks []api.Checker
 
 	if contains(experimentalChecks, "notowned") {
 		var cfg struct {

@@ -7,6 +7,7 @@ import (
 	"net/mail"
 	"strings"
 
+	"go.szostok.io/codeowners-validator/internal/api"
 	"go.szostok.io/codeowners-validator/internal/config"
 	"go.szostok.io/codeowners-validator/internal/ctxutil"
 
@@ -56,13 +57,13 @@ type ValidOwner struct {
 
 // NewValidOwner returns new instance of the ValidOwner
 func NewValidOwner(cfg *config.Config, ghClient *github.Client, checkScopes bool) (*ValidOwner, error) {
-	split := strings.Split(cfg.Repository, "/")
+	split := strings.Split(cfg.OwnerCheckerRepository, "/")
 	if len(split) != 2 {
-		return nil, errors.Errorf("Wrong repository name. Expected pattern 'owner/repository', got '%s'", cfg.Repository)
+		return nil, errors.Errorf("Wrong repository name. Expected pattern 'owner/repository', got '%s'", cfg.OwnerCheckerRepository)
 	}
 
 	ignOwners := map[string]struct{}{}
-	for _, n := range cfg.IgnoredOwners {
+	for _, n := range cfg.OwnerCheckerIgnoredOwners {
 		ignOwners[n] = struct{}{}
 	}
 
@@ -72,8 +73,8 @@ func NewValidOwner(cfg *config.Config, ghClient *github.Client, checkScopes bool
 		orgName:              split[0],
 		orgRepoName:          split[1],
 		ignOwners:            ignOwners,
-		allowUnownedPatterns: cfg.AllowUnownedPatterns,
-		ownersMustBeTeams:    cfg.OwnersMustBeTeams,
+		allowUnownedPatterns: cfg.OwnerCheckerAllowUnownedPatterns,
+		ownersMustBeTeams:    cfg.OwnerCheckerOwnersMustBeTeams,
 	}, nil
 }
 
@@ -89,20 +90,20 @@ func NewValidOwner(cfg *config.Config, ghClient *github.Client, checkScopes bool
 // - if GitHub user then check if have GitHub account
 // - if GitHub user then check if he/she is in organization
 // - if org team then check if exists in organization
-func (v *ValidOwner) Check(ctx context.Context, in Input) (Output, error) {
-	var bldr OutputBuilder
+func (v *ValidOwner) Check(ctx context.Context, in api.Input) (api.Output, error) {
+	var bldr api.OutputBuilder
 
 	checkedOwners := map[string]struct{}{}
 
 	for _, entry := range in.CodeownersEntries {
 		if len(entry.Owners) == 0 && !v.allowUnownedPatterns {
-			bldr.ReportIssue("Missing owner, at least one owner is required", WithEntry(entry), WithSeverity(Warning))
+			bldr.ReportIssue("Missing owner, at least one owner is required", api.WithEntry(entry), api.WithSeverity(api.Warning))
 			continue
 		}
 
 		for _, ownerName := range entry.Owners {
 			if ctxutil.ShouldExit(ctx) {
-				return Output{}, ctx.Err()
+				return api.Output{}, ctx.Err()
 			}
 
 			if v.isIgnoredOwner(ownerName) {
@@ -115,7 +116,7 @@ func (v *ValidOwner) Check(ctx context.Context, in Input) (Output, error) {
 
 			validFn := v.selectValidateFn(ownerName)
 			if err := validFn(ctx, ownerName); err != nil {
-				bldr.ReportIssue(err.msg, WithEntry(entry))
+				bldr.ReportIssue(err.msg, api.WithEntry(entry))
 				if err.permanent { // Doesn't make sense to process further
 					return bldr.Output(), nil
 				}
